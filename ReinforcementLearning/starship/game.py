@@ -26,9 +26,6 @@ def text_object(text, font):
     textSurface = font.render(text, True, white)
     return textSurface, textSurface.get_rect()
 
-def crash():
-    print('Crash!')
-
 def reset_game():
     return Game().reset()
 
