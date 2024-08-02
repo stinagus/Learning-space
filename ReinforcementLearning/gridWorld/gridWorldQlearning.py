@@ -111,6 +111,38 @@ class GridWorld(object):
     def action_space_sample(self):
         return np.random.choice(self.possible_actions)
 
+    def value_iteration(self, gamma=1.0, epsilon=1e-5):
+        V = np.zeros(self.m * self.n)
+        while True:
+            delta = 0
+            for state in self.state_space:
+                v = V[state]
+                Q_values = []
+                for action in self.possible_actions:
+                    next_state = state + self.action_space[action]
+                    if next_state in self.short_cut:
+                        next_state = self.short_cut[next_state]
+                    if not self.off_grid(next_state, state):
+                        reward = -1 if not self.is_term_state(next_state) else 0
+                        Q_values.append(reward + gamma * V[next_state])
+                V[state] = max(Q_values)
+                delta = max(delta, abs(v - V[state]))
+            if delta < epsilon:
+                break
+
+        policy = {}
+        for state in self.state_space:
+            Q_values = {}
+            for action in self.possible_actions:
+                next_state = state + self.action_space[action]
+                if next_state in self.short_cut:
+                    next_state = self.short_cut[next_state]
+                if not self.off_grid(next_state, state):
+                    reward = -1 if not self.is_term_state(next_state) else 0
+                    Q_values[action] = reward + gamma * V[next_state]
+            policy[state] = max(Q_values, key=Q_values.get)
+        return policy
+
 
 def max_action(Q, state, actions):
     values = np.array([Q[state, a] for a in actions])
@@ -120,18 +152,19 @@ def max_action(Q, state, actions):
 if __name__ == '__main__':
     short_cut = {18: 54, 63: 14}
     grid = np.array([
-            [0, 0, 9, 0, 0, 0, 0, 0, 0],
-            [0, 0, 9, 0, 0, 0, 0, 0, 0],
-            [0, 0, 9, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [9, 9, 9, 9, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 9, 9, 9],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0]
-        ])
+        [0, 0, 9, 0, 0, 0, 0, 0, 0],
+        [0, 0, 9, 0, 0, 0, 0, 0, 0],
+        [0, 0, 9, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [9, 9, 9, 9, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 9, 9, 9],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ])
     env = GridWorld(short_cut, grid)
 
+    """ IF YOU WANT TO USE Q-LEARNING
     LR = 0.1
     GAMMA = 1.0
     EPS = 1.0
@@ -157,7 +190,6 @@ if __name__ == '__main__':
         observation = env.reset()
 
         while not done:
-            """ FOR VISUALIZATION 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -165,7 +197,7 @@ if __name__ == '__main__':
 
             env.render(screen)
             pygame.display.flip()
-            """
+
             rand = np.random.random()
             action = max_action(Q, observation, env.possible_actions) if rand < (1 - EPS) else env.action_space_sample()
             observation_, reward, done, info = env.step(action)
@@ -185,4 +217,25 @@ if __name__ == '__main__':
 
     plt.plot(total_rewards)
     plt.show()
+    """
+
+    pygame.init()
+    screen = pygame.display.set_mode((450, 450))
+    pygame.display.set_caption('GridWorld')
+
+    policy = env.value_iteration()
+
+    observation = env.reset()
+    done = False
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        env.render(screen)
+        pygame.display.flip()
+
+        action = policy[observation]
+        observation, _, done, _ = env.step(action)
 
